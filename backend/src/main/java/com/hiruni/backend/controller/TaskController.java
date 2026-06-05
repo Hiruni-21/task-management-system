@@ -1,10 +1,13 @@
 package com.hiruni.backend.controller;
 
 import com.hiruni.backend.model.Task;
+import com.hiruni.backend.model.TaskStatus;
 import com.hiruni.backend.repository.TaskRepository;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/tasks")
@@ -16,27 +19,51 @@ public class TaskController {
         this.taskRepository = taskRepository;
     }
 
-    // GET all tasks
     @GetMapping
-    public List<Task> getAllTasks() {
+    public List<Task> getAllTasks(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) TaskStatus status
+    ) {
+        if (status != null) {
+            return taskRepository.findByStatus(status);
+        }
+
+        if (search != null && !search.isBlank()) {
+            return taskRepository.findByTitleContainingIgnoreCase(search);
+        }
+
         return taskRepository.findAll();
     }
 
-    // POST create task
     @PostMapping
-    public Task createTask(@RequestBody Task task) {
+    public Task createTask(@Valid @RequestBody Task task) {
         return taskRepository.save(task);
     }
-    // Delete task
+
+    @PutMapping("/{id}")
+    public Task updateTask(@PathVariable Long id, @Valid @RequestBody Task updatedTask) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        task.setTitle(updatedTask.getTitle());
+        task.setDescription(updatedTask.getDescription());
+        task.setStatus(updatedTask.getStatus());
+
+        return taskRepository.save(task);
+    }
+
+    @PatchMapping("/{id}/status")
+    public Task updateStatus(@PathVariable Long id, @RequestBody Task updatedTask) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        task.setStatus(updatedTask.getStatus());
+
+        return taskRepository.save(task);
+    }
+
     @DeleteMapping("/{id}")
     public void deleteTask(@PathVariable Long id) {
-    taskRepository.deleteById(id);
+        taskRepository.deleteById(id);
     }
-    // add Update endpoint
-    @PutMapping("/{id}/status")
-public Task updateStatus(@PathVariable Long id, @RequestBody Task updatedTask) {
-    Task task = taskRepository.findById(id).orElseThrow();
-    task.setStatus(updatedTask.getStatus());
-    return taskRepository.save(task);
-}
 }
